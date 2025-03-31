@@ -132,7 +132,7 @@ def plot_corr(E1, E2, title1, title2, save=False):
 
 def psn_density(E_sim, sim_threshold=0.2):
     """
-    Calculates the density of a PSN, treating negative similarities as 0.
+    Calculates the density of a PSN, treating similarities below threshold as 0.
     
     Parameters:
     - E_sim (numpy.ndarray): NxN PSN of genes.

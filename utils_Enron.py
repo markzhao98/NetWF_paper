@@ -70,3 +70,29 @@ def MSE_months(A_months, A_total, save=False):
         MSE_df.to_csv('Enron-data/results/MSE_months.csv', index=False)
     return MSE_list
 
+def rank_with_random_ties(row):
+    """Rank a row with random tie-breaking"""
+    # Get random permutation of indices
+    permuted_indices = np.random.permutation(len(row))
+    # Sort these randomly permuted indices by their actual values
+    sorted_indices = sorted(permuted_indices, key=lambda i: row[i])
+    # Create array to store ranks
+    ranks = np.empty_like(row)
+    # Assign ranks based on the randomly-tie-broken order
+    ranks[sorted_indices] = np.arange(1, len(row)+1)
+    return ranks
+
+def MSE_rank(A_true, A_data):
+    A_true_ranked = np.apply_along_axis(rank_with_random_ties, 1, A_true)
+    A_data_ranked = np.apply_along_axis(rank_with_random_ties, 1, A_data)
+    return np.mean((A_true_ranked - A_data_ranked) ** 2)
+
+def MSE_rank_months(A_months, A_total, save=False):
+    MSE_list = []
+    for month in range(1, 13):
+        A_month = A_months[month-1]
+        MSE_list.append(MSE_rank(A_total, A_month))
+    if save:
+        MSE_df = pd.DataFrame({'Month': range(1, 13), 'MSE': MSE_list})
+        MSE_df.to_csv('Enron-data/results/MSE_rank_months.csv', index=False)
+    return MSE_list
