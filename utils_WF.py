@@ -36,9 +36,6 @@ plt.rcParams['ytick.labelsize'] = 12
 
 # ----- Calculations -----
 
-import numpy as np
-from scipy.stats import pearsonr
-
 def calculate_profile_similarity(matrix, threshold=-np.inf, mode ='mean'):
     """
     Calculates the node level similarity matrix (NxN) from the adjacency matrix (NxN).
@@ -104,6 +101,7 @@ def compute_edge_correlation_matrix_vectorized_from_sim(similarity_matrix):
     Calculates the edge level similatrity matrix (N^2xN^2) from the node level similarity matrix (NxN).
     """
     edge_correlation_matrix = np.kron(similarity_matrix, similarity_matrix)
+    edge_correlation_matrix = (edge_correlation_matrix + edge_correlation_matrix.T) / 2
     return edge_correlation_matrix
 
 
