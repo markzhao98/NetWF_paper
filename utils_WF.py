@@ -11,7 +11,7 @@ import scipy.stats as stats
 from scipy.stats import pearsonr
 from scipy.stats import rankdata
 
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import auc
 from sklearn.utils import resample
 from collections import defaultdict
 import random
@@ -19,18 +19,6 @@ import math
 
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-
-plt.rcParams['font.family'] = 'serif'
-plt.rcParams['font.serif'] = ['Palatino']
-plt.rcParams['font.size'] = 16
-plt.rcParams['text.usetex'] = True
-plt.rcParams['lines.linewidth'] = 1.5
-plt.rcParams['axes.titlesize'] = 20
-plt.rcParams['figure.titlesize'] = 20
-plt.rcParams['legend.fontsize'] = 16
-plt.rcParams['axes.labelsize'] = 16
-plt.rcParams['xtick.labelsize'] = 12
-plt.rcParams['ytick.labelsize'] = 12
 
 
 
@@ -217,6 +205,8 @@ def filter_big_var_sss(E_big, E_big_var, p, k, epsilon = 1e-2, mode = 'mean', on
     count = np.zeros((n, n), dtype=np.int64)
     
     for _ in range(k):
+        # print progress
+        print(f'Processing sample {_+1}/{k}...')
 
         nodes_sampled = np.random.choice(n, p, replace=False)
 
@@ -268,6 +258,9 @@ def filter_big_var_dss(E_big, E_big_var, p, epsilon=1e-2, mode = 'mean', onlypos
     
     # Loop over every node: for each node, select the p most similar nodes (including itself)
     for i in range(n):
+        # print progress
+        print(f'Processing node {i+1}/{n}...')
+
         # Get indices of the p most similar nodes for node i (sorted in descending order)
         neighbors = np.argsort(similarity[i])[::-1][:p]
         

@@ -135,7 +135,7 @@ def psn_density(E_sim, sim_threshold=0.2):
     Calculates the density of a PSN, treating similarities below threshold as 0.
     
     Parameters:
-    - E_sim (numpy.ndarray): NxN PSN of genes.
+    - E_sim (numpy.ndarray): PSN of genes.
     - sim_threshold (float): Minimum similarity threshold.
     
     Returns:
@@ -145,13 +145,13 @@ def psn_density(E_sim, sim_threshold=0.2):
     E_sim_pos[E_sim_pos <= sim_threshold] = 0
     return np.mean(E_sim_pos)
 
-def go_eval(E_sim, genes, go_mapping, sim_threshold=0.2, K=10, whatrecall=0.5):
+def go_eval(E_sim, genes, go_mapping, sim_threshold=0, K=10, whatrecall=0.25):
     """
     Evaluates the performance of predicting GO terms with profile similarity network,
     using precision at whatrecall in a leave-one-out manner, considering only the K nearest neighbors.
     
     Parameters:
-    - E_sim (numpy.ndarray): NxN PSN of genes.
+    - E_sim (numpy.ndarray): PSN of genes.
     - genes (list): N-dim list of gene names, ordered as the E_sim's rows/columns.
     - go_mapping (dict): Dictionary mapping genes to sets of GO terms.
     - sim_threshold (float): Minimum similarity threshold for considering neighbors.
@@ -234,75 +234,141 @@ def go_eval(E_sim, genes, go_mapping, sim_threshold=0.2, K=10, whatrecall=0.5):
     
     return np.sum(precisions) / count if count > 0 else 0.0, np.std(precisions) / np.sqrt(count) if count > 0 else 0.0
 
-def get_precision_recall(E, genes, ppi):
+def get_precision_recall_auprc(E, gold, direction='neg'):
     """
-    Evaluates the performance of predicting PPIs with negative genetic interaction scores.
+    Compute precision-recall curve (extended to recall=1 with random predictions) and AUPRC.
     
-    Parameters:
-    - E (numpy.ndarray): NxN matrix of genetic interaction scores.
-    - genes (list): N-dim list of gene names, ordered as the matrix's rows/columns.
-    - ppi (numpy.ndarray): NxN binary matrix of known PPIs.
+    Args:
+        E (np.ndarray): GI score matrix or similarity matrix.
+        gold (np.ndarray): Binary gold standard matrix (1 = interaction exists, 0 otherwise).
+        direction (str): 'pos' (most positive first) or 'neg' (most negative first).
     
     Returns:
-    - precision_list (list): List of precision values at each threshold.
-    - recall_list (list): List of recall values at each threshold.
+        tuple: (precision_list, recall_list, auprc)
     """
     E = np.nan_to_num(E, nan=np.nanmean(E))
-
-    ppi_set = set()
-    for i in range(len(genes)):
-        for j in range(i+1, len(genes)):
-            if ppi[i, j] == 1:
-                ppi_set.add((genes[i], genes[j]))
-
-    gi_matrix = pd.DataFrame(E, index=genes, columns=genes)
-    all_pairs = [(genes[i], genes[j]) for i in range(len(genes)) for j in range(i+1, len(genes))]
-
-    # Initialize lists to store scores and labels
+    n = E.shape[0]  # Assuming E and gold are square matrices of the same size
+    
+    # Get all possible index pairs (excluding self-interactions)
+    all_pairs = [(i, j) for i in range(n) for j in range(i+1, n)]
+    
+    # Extract scores and labels
     scores = []
     labels = []
     tie_breakers = []
-
-    for pair in all_pairs:
-        gene1, gene2 = pair
-        # Retrieve the GI score; assume 0 if not present
-        score = gi_matrix.at[gene1, gene2] if gene1 in gi_matrix.index and gene2 in gi_matrix.columns else 0
-        scores.append(score)
-        # Label as 1 if it's a known PPI, else 0
-        label = 1 if pair in ppi_set or (gene2, gene1) in ppi_set else 0
-        labels.append(label)
-        tie_breakers.append(random.random())
-
+    
+    for i, j in all_pairs:
+        scores.append(E[i, j])
+        labels.append(gold[i, j] or gold[j, i])  # Check both directions
+        tie_breakers.append(random.random())  # For breaking ties randomly
+    
     scores = np.array(scores)
-    scores[scores >= 0] = 0
-    scores = np.abs(scores)
     labels = np.array(labels)
     tie_breakers = np.array(tie_breakers)
-
+    
+    # Adjust scores based on direction
+    if direction == 'neg':
+        scores = -scores  # Prioritize most negatives
+    elif direction == 'pos':
+        scores = scores  # Prioritize most positives
+    else:
+        raise ValueError("direction must be 'pos' or 'neg'")
+    
+    # Sort in descending order (most extreme first)
     sorted_indices = np.lexsort((tie_breakers, -scores))
     sorted_scores = scores[sorted_indices]
     sorted_labels = labels[sorted_indices]
-
-    # Compute precision and recall iteratively
+    
+    # Compute precision and recall
     precision_list = []
     recall_list = []
-    
     tp = 0  # True positives
     fp = 0  # False positives
     total_positives = np.sum(labels)
-
+    
+    # Step 1: Process ranked predictions (where sorted_scores > 0)
     for i in range(len(sorted_labels)):
         if sorted_scores[i] <= 0:
-            break 
+            break  # Stop when no more high-confidence predictions
         if sorted_labels[i] == 1:
             tp += 1
         else:
             fp += 1
-
-        precision = tp / (tp + fp)
-        recall = tp / total_positives
+        
+        precision = tp / (tp + fp) if (tp + fp) > 0 else 0
+        recall = tp / total_positives if total_positives > 0 else 0
         precision_list.append(precision)
         recall_list.append(recall)
+    
+    # Step 2: Fill remaining predictions randomly (to reach recall=1)
+    remaining_indices = np.where(sorted_scores <= 0)[0]
+    remaining_labels = sorted_labels[remaining_indices]
+    np.random.shuffle(remaining_labels)  # Random order
+    
+    for label in remaining_labels:
+        if label == 1:
+            tp += 1
+        else:
+            fp += 1
+        
+        precision = tp / (tp + fp) if (tp + fp) > 0 else 0
+        recall = tp / total_positives if total_positives > 0 else 0
+        precision_list.append(precision)
+        recall_list.append(recall)
+    
+    # Ensure we end at recall=1 (floating point safety)
+    if recall_list[-1] < 1.0 and total_positives > 0:
+        precision_list.append(tp / (tp + fp + (total_positives - tp)))
+        recall_list.append(1.0)
+    
+    # Compute AUPRC
+    auprc = auc(recall_list, precision_list)
+    
+    return precision_list, recall_list, auprc
 
-    return precision_list, recall_list
-
+def calculate_fold_enrichment(gold, E_thresh, direction='neg'):
+    """
+    Calculate fold enrichment of gold standard interactions in significant GI pairs.
+    
+    Args:
+        gold (np.ndarray): Binary gold standard matrix (1 = interaction, 0 = no interaction).
+        E_thresh (np.ndarray): Thresholded GI matrix (non-zero = significant, sign indicates direction).
+        direction (str): 'pos' (enrichment in positive GIs) or 'neg' (enrichment in negative GIs).
+    
+    Returns:
+        float: Fold enrichment value.
+    """
+    # Ensure matrices are symmetric and exclude diagonals
+    gold = np.triu(gold, k=1)  # Upper triangle only (no diagonal)
+    E_thresh = np.triu(E_thresh, k=1)
+    
+    # Total gold standard interactions and possible pairs
+    total_gold_pairs = np.sum(gold)
+    total_possible_pairs = gold.size - np.diag(gold).size  # Exclude diagonal
+    
+    if total_gold_pairs == 0:
+        return 0.0  # Avoid division by zero
+    
+    # Direction handling (non-zero values with correct sign)
+    if direction == 'neg':
+        significant_mask = (E_thresh < 0)  # Negative GIs
+    elif direction == 'pos':
+        significant_mask = (E_thresh > 0)  # Positive GIs
+    else:
+        raise ValueError("direction must be 'pos' or 'neg'")
+    
+    # Gold interactions in significant GI pairs
+    gold_in_sig = np.sum(gold[significant_mask])
+    sig_pairs = np.sum(significant_mask)
+    
+    if sig_pairs == 0:
+        return 0.0  # No significant pairs to evaluate
+    
+    # Densities
+    density_in_sig = gold_in_sig / sig_pairs
+    density_overall = total_gold_pairs / total_possible_pairs
+    
+    # Fold enrichment
+    fold_enrichment = density_in_sig / density_overall
+    
+    return fold_enrichment
