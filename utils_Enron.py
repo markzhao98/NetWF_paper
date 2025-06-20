@@ -16,7 +16,17 @@ def plot_year(G, pos, title='Enron Corpus Network', save=False):
     weights = [G[u][v]['weight'] for u, v in G.edges()]
     widths = [transform_weight_general(w) for w in weights]
     node_sizes = [5*sum([d['weight'] for u, v, d in G.edges(data=True) if u == node or v == node]) for node in G.nodes()]
-    nx.draw_networkx_nodes(G, pos, node_size=node_sizes, node_color="wheat", alpha=0.8)
+    node_colors = []
+    for node in G.nodes():
+        # if node == 'KENNETH LAY':
+        #     node_colors.append('red')
+        # elif node == 'JEFFERY SKILLING':
+        #     node_colors.append('blue')
+        # elif node == 'ANDREW FASTOW':
+        #     node_colors.append('green')
+        # else:
+            node_colors.append('wheat')
+    nx.draw_networkx_nodes(G, pos, node_size=node_sizes, node_color=node_colors, alpha=0.8)
     nx.draw_networkx_edges(G, pos, edge_color="darkslateblue", 
                            connectionstyle='arc3,rad=0.25', 
                            arrowstyle='->', 
@@ -24,7 +34,7 @@ def plot_year(G, pos, title='Enron Corpus Network', save=False):
     ax = plt.gca()
     ax.axis("off")
     ax.set_frame_on(False)
-    ax.set_title(title)
+    ax.set_title(title, fontsize=20)
     if save:
         plt.savefig(f'Figures/{title}.pdf', bbox_inches='tight', transparent=True, dpi=1200)
     plt.show()
@@ -37,8 +47,18 @@ def plot_months(G_months, pos, title='Monthly Networks', save=False):
         weights_month = [transform_weight_general(w) for w in weights_month]
         edges_to_draw = [(u, v, w) for (u, v), w in zip(G_month.edges(), weights_month) if w > 0]
         node_sizes_month = [5*sum([d['weight'] for u, v, d in G_month.edges(data=True) if u == node or v == node]) for node in G_month.nodes()]
+        node_colors = []
+        for node in G_month.nodes():
+            # if node == 'KENNETH LAY':
+            #     node_colors.append('red')
+            # elif node == 'JEFFERY SKILLING':
+            #     node_colors.append('blue')
+            # elif node == 'ANDREW FASTOW':
+            #     node_colors.append('green')
+            # else:
+                node_colors.append('wheat')
         plt.subplot(4,3,month)
-        nx.draw_networkx_nodes(G_month, pos, node_size=node_sizes_month, node_color="wheat", alpha=0.8)
+        nx.draw_networkx_nodes(G_month, pos, node_size=node_sizes_month, node_color=node_colors, alpha=0.8)
         nx.draw_networkx_edges(G_month, pos, edgelist=[(u, v) for u, v, _ in edges_to_draw], 
                                edge_color="darkslateblue", 
                                connectionstyle='arc3,rad=0.25', 

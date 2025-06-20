@@ -84,19 +84,37 @@ def calculate_profile_similarity(matrix, threshold=-np.inf, mode ='mean'):
     similarity_matrix[similarity_matrix < threshold] = 0
     return np.nan_to_num(similarity_matrix)
 
-def compute_edge_correlation_matrix_vectorized_from_sim(similarity_matrix):
+def compute_edge_correlation_matrix_vectorized_from_sim(similarity_matrix, directed = True):
     """
-    Calculates the edge level similatrity matrix (N^2xN^2) from the node level similarity matrix (NxN).
+    Calculates the edge-level similarity matrix (N²xN²) from the node-level similarity matrix (NxN).
+    
+    The edge similarity between edges AB and CD is:
+        S_edge(AB, CD) = 0.5 * (S_AC * S_BD + S_AD * S_BC)
+    
+    Args:
+        similarity_matrix (np.ndarray): NxN node similarity matrix.
+        directed (bool): If True, the edges are considered directed. If False, the edges are considered undirected.
+    
+    Returns:
+        np.ndarray: N²xN² edge similarity matrix.
     """
-    edge_correlation_matrix = np.kron(similarity_matrix, similarity_matrix)
-    edge_correlation_matrix = (edge_correlation_matrix + edge_correlation_matrix.T) / 2
-    return edge_correlation_matrix
+    n = similarity_matrix.shape[0]
+    K = np.kron(similarity_matrix, similarity_matrix)  # K_{(A,B),(C,D)} = S_AC * S_BD
+    
+    if directed:
+        return K
+    
+    else:
+        K_tensor = K.reshape(n, n, n, n)
+        K_swapped_tensor = K_tensor.transpose(0, 3, 2, 1)
+        K_swapped = K_swapped_tensor.reshape(n**2, n**2)
+        return 0.5 * (K + K_swapped)
 
 
 
 # ----- Filtering -----
 
-def filter_small_var(E_small, E_small_var, epsilon = 1e-2, mode = 'mean', onlypos = False, noSL = False, renorm = False):
+def filter_small_var(E_small, E_small_var, epsilon = 1e-2, mode = 'mean', directed = True, onlypos = False, noSL = False, renorm = False):
     """
     Applies the netWF algorithm directly, given an NxN adjacency matrix and an NxN edge noise variance matrix.
 
@@ -105,6 +123,7 @@ def filter_small_var(E_small, E_small_var, epsilon = 1e-2, mode = 'mean', onlypo
     - E_small_var (numpy.ndarray): NxN edge noise variance matrix, potential nan values allowed.
     - epsilon (float): Regularization term for numerical stability.
     - mode (str): Method to calculate similarity. Options are 'mean', 'max', 'row', or 'col'.
+    - directed (bool): Whether the edges are directed.
     - renorm (bool): Whether to renormalize the filtered matrix.
     - onlypos (bool): Whether to only keep the positive entries of the filtered matrix.
     - noSL (bool): Whether to fill the diagonal of the filtered matrix with zeros.
@@ -118,7 +137,7 @@ def filter_small_var(E_small, E_small_var, epsilon = 1e-2, mode = 'mean', onlypo
     E_small_var = np.nan_to_num(E_small_var, nan=E_small_datavar + E_small_var_mean)
 
     E_small_sim = calculate_profile_similarity(E_small, mode=mode)
-    S = (E_small_datavar) * compute_edge_correlation_matrix_vectorized_from_sim(E_small_sim)
+    S = (E_small_datavar) * compute_edge_correlation_matrix_vectorized_from_sim(E_small_sim, directed=directed)
     N = np.diag(E_small_var.flatten())
 
     E_small_dm = E_small - E_small_mean
@@ -141,15 +160,16 @@ def filter_small_var(E_small, E_small_var, epsilon = 1e-2, mode = 'mean', onlypo
     return E_small_filtered
 
 
-def filter_small_cov(E_small, E_small_cov, epsilon = 1e-2, mode = 'mean', onlypos = False, noSL = False, renorm = False):
+def filter_small_cov(E_small, E_small_cov, epsilon = 1e-2, mode = 'mean', directed = True, onlypos = False, noSL = False, renorm = False):
     """
-    Applies the netWF algorithm directly, given an NxN adjacency matrix and an N^2xN^2 edge noise covariance matrix.
+    Applies the netWF algorithm directly, given an NxN adjacency matrix and an N²xN² edge noise covariance matrix.
 
     Parameters:
     - E_small (numpy.ndarray): NxN adjacency matrix, potential nan values allowed.
-    - E_small_cov (numpy.ndarray): N^2xN^2 edge noise covariance matrix, potential nan values NOT allowed.
+    - E_small_cov (numpy.ndarray): N²xN² edge noise covariance matrix, potential nan values NOT allowed.
     - epsilon (float): Regularization term for numerical stability.
     - mode (str): Method to calculate similarity. Options are 'mean', 'max', 'row', or 'col'.
+    - directed (bool): Whether the edges are directed.
     - renorm (bool): Whether to renormalize the filtered matrix.
     - onlypos (bool): Whether to only keep the positive entries of the filtered matrix.
     - noSL (bool): Whether to fill the diagonal of the filtered matrix with zeros.
@@ -161,7 +181,7 @@ def filter_small_cov(E_small, E_small_cov, epsilon = 1e-2, mode = 'mean', onlypo
     E_small = np.nan_to_num(E_small, nan=E_small_mean)
 
     E_small_sim = calculate_profile_similarity(E_small, mode=mode)
-    S = (E_small_datavar) * compute_edge_correlation_matrix_vectorized_from_sim(E_small_sim)
+    S = (E_small_datavar) * compute_edge_correlation_matrix_vectorized_from_sim(E_small_sim, directed=directed)
     N = E_small_cov
 
     E_small_dm = E_small - E_small_mean
@@ -184,7 +204,7 @@ def filter_small_cov(E_small, E_small_cov, epsilon = 1e-2, mode = 'mean', onlypo
     return E_small_filtered
 
 
-def filter_big_var_sss(E_big, E_big_var, p, k, epsilon = 1e-2, mode = 'mean', onlypos = False, noSL = False, renorm = False):
+def filter_big_var_sss(E_big, E_big_var, p, k, epsilon = 1e-2, mode = 'mean', directed = True, onlypos = False, noSL = False, renorm = False):
     """
     Appplis the netWF algorithm via stochastic submatrix sampling (SSS), given an NxN adjacency matrix and an NxN edge noise variance matrix.
 
@@ -195,6 +215,7 @@ def filter_big_var_sss(E_big, E_big_var, p, k, epsilon = 1e-2, mode = 'mean', on
     - k (int): Number of samples.
     - epsilon (float): Regularization term for numerical stability.
     - mode (str): Method to calculate similarity. Options are 'mean', 'max', 'row', or 'col'.
+    - directed (bool): Whether the edges are directed.
     - renorm (bool): Whether to renormalize the filtered matrix.
     - onlypos (bool): Whether to only keep the positive entries of the filtered matrix.
     - noSL (bool): Whether to fill the diagonal of the filtered matrix with zeros.
@@ -213,7 +234,7 @@ def filter_big_var_sss(E_big, E_big_var, p, k, epsilon = 1e-2, mode = 'mean', on
         E_small = E_big[np.ix_(nodes_sampled, nodes_sampled)]
         E_small_var = E_big_var[np.ix_(nodes_sampled, nodes_sampled)]
 
-        E_small_filtered = filter_small_var(E_small, E_small_var, epsilon=epsilon, mode=mode, 
+        E_small_filtered = filter_small_var(E_small, E_small_var, epsilon=epsilon, mode=mode, directed=directed,
                                             renorm=renorm, onlypos=onlypos, noSL=noSL)
 
         rows_grid, cols_grid = np.meshgrid(nodes_sampled, nodes_sampled, indexing='ij')
@@ -230,7 +251,7 @@ def filter_big_var_sss(E_big, E_big_var, p, k, epsilon = 1e-2, mode = 'mean', on
     return E_filtered
 
 
-def filter_big_var_dss(E_big, E_big_var, p, epsilon=1e-2, mode = 'mean', onlypos = False, noSL = False, renorm = False):
+def filter_big_var_dss(E_big, E_big_var, p, epsilon=1e-2, mode = 'mean', directed = True, onlypos = False, noSL = False, renorm = False):
     """
     Applies the netWF algorithm via deterministic submatrix sampling (DSS), given an NxN adjacency matrix and an NxN edge noise variance matrix.
     Instead of randomly sampling nodes, for each node we deterministically sample a fixed amount of the most similar rows and columns based on a profile similarity.
@@ -241,6 +262,7 @@ def filter_big_var_dss(E_big, E_big_var, p, epsilon=1e-2, mode = 'mean', onlypos
     - p (int): Number of most similar nodes to sample for each node.
     - epsilon (float): Regularization term for numerical stability.
     - mode (str): Method to calculate similarity. Options are 'mean', 'max', 'row', or 'col'.
+    - directed (bool): Whether the edges are directed.
     - renorm (bool): Whether to renormalize the filtered matrix.
     - onlypos (bool): Whether to only keep the positive entries of the filtered matrix.
     - noSL (bool): Whether to fill the diagonal of the filtered matrix with zeros.
@@ -267,7 +289,7 @@ def filter_big_var_dss(E_big, E_big_var, p, epsilon=1e-2, mode = 'mean', onlypos
         E_small = E_big[np.ix_(neighbors, neighbors)]
         E_small_var = E_big_var[np.ix_(neighbors, neighbors)]
         
-        E_small_filtered = filter_small_var(E_small, E_small_var, epsilon=epsilon, mode=mode, 
+        E_small_filtered = filter_small_var(E_small, E_small_var, epsilon=epsilon, mode=mode, directed=directed,
                                             renorm=renorm, onlypos=onlypos, noSL=noSL)
         
         # Update the accumulator and count matrices at the positions corresponding to the chosen neighbors
@@ -281,5 +303,6 @@ def filter_big_var_dss(E_big, E_big_var, p, epsilon=1e-2, mode = 'mean', onlypos
     E_filtered[mask] = accumulator[mask] / count[mask]
     
     print(f'{np.sum(mask) / n**2 * 100:.2f}% entries sampled at least once')
+    
     return E_filtered
 
