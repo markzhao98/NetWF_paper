@@ -3,7 +3,6 @@
 from utils_WF import *
 
 
-
 # ----- Plotting -----
 
 def plot_gi(E, title='Genetic interaction score', save=False):
@@ -11,7 +10,7 @@ def plot_gi(E, title='Genetic interaction score', save=False):
     Plots a GI network.
     
     Parameters:
-    - E_sim (numpy.ndarray): GI network.
+    - E (numpy.ndarray): GI network.
     - title (str): Title of the plot.
     - save (bool): Whether to save the plot as a PDF.
     """
@@ -127,7 +126,6 @@ def plot_corr(E1, E2, title1, title2, save=False):
     plt.show()
 
 
-
 # ----- Validations -----
 
 def psn_density(E_sim, sim_threshold=0.2):
@@ -236,7 +234,7 @@ def go_eval(E_sim, genes, go_mapping, sim_threshold=0, K=10, whatrecall=0.25):
 
 def get_precision_recall_auprc(E, gold, direction='neg'):
     """
-    Compute precision-recall curve (extended to recall=1 with random predictions) and AUPRC.
+    Computes precision-recall curve (extended to recall=1 with random predictions) and AUPRC.
     
     Args:
         E (np.ndarray): GI score matrix or similarity matrix.
@@ -328,7 +326,7 @@ def get_precision_recall_auprc(E, gold, direction='neg'):
 
 def calculate_fold_enrichment(gold, E_thresh, direction='neg'):
     """
-    Calculate fold enrichment of gold standard interactions in significant GI pairs.
+    Calculates fold enrichment of gold standard interactions in significant GI pairs.
     
     Args:
         gold (np.ndarray): Binary gold standard matrix (1 = interaction, 0 = no interaction).
@@ -372,3 +370,5 @@ def calculate_fold_enrichment(gold, E_thresh, direction='neg'):
     fold_enrichment = density_in_sig / density_overall
     
     return fold_enrichment
+
+

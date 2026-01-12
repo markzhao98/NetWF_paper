@@ -3,7 +3,6 @@
 from utils_WF import *
 
 
-
 # ----- Plotting -----
 
 def transform_weight_general(w, step=0.2, scale = 0.4):
@@ -74,7 +73,6 @@ def plot_months(G_months, pos, title='Monthly Networks', save=False):
     plt.show()
 
 
-
 # ----- Validations -----
 
 def MSE(A_true, A_data):
@@ -116,3 +114,5 @@ def MSE_rank_months(A_months, A_total, save=False):
         MSE_df = pd.DataFrame({'Month': range(1, 13), 'MSE': MSE_list})
         MSE_df.to_csv('Enron-data/results/MSE_rank_months.csv', index=False)
     return MSE_list
+
+
