@@ -19,20 +19,6 @@ This repository provides:
 
 ## Repository Structure
 
-### Data folders
-- **`Enron-data/`**  
-  Contains data for the Enron Corpus email network.
-
-- **`GI-data/`**  
-  Contains data for the genetic interaction (GI) network of the yeast *Saccharomyces cerevisiae* as well as benchmark data for evaluation.
-
-### Notebooks
-- **`Enron.ipynb`**  
-  Demonstration notebook applying NetWF to the Enron network.  
-
-- **`GI.ipynb`**  
-  Demonstration notebook applying NetWF to the GI network.
-
 ### Core algorithms
 - **`utils_WF.py`**  
   Core implementation of the NetWF, including:
@@ -40,12 +26,23 @@ This repository provides:
   - Iterative NetWF algorithm
   - Direct NetWF algorithm
 
-### Supporting utilities
-- **`utils_Enron.py`**  
-  Helper functions for the Enron network analysis.
+### Data folders
+- **`GI-data/`**  
+  Contains data for the genetic interaction (GI) network of the yeast *Saccharomyces cerevisiae* as well as benchmark data for evaluation.
+- **`Enron-data/`**  
+  Contains data for the Enron Corpus email network.
 
+### Notebooks
+- **`GI.ipynb`**  
+  Demonstration notebook applying NetWF to the GI network.
+- **`Enron.ipynb`**  
+  Demonstration notebook applying NetWF to the Enron network.  
+
+### Supporting utilities
 - **`utils_GI.py`**  
-  Helper functions for the GI network analysis.
+  Helper functions for the GI network analysis and visualization.
+- **`utils_Enron.py`**  
+  Helper functions for the Enron network analysis and visualization.
 
 ---
 
