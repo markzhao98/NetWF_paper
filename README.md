@@ -23,8 +23,8 @@ This repository provides:
 - **`utils_WF.py`**  
   Core implementation of the NetWF, including:
   - Profile similarity computation
-  - Iterative NetWF algorithm
   - Direct NetWF algorithm
+  - Iterative NetWF algorithm
 
 ### Data folders
 - **`GI-data/`**  
