@@ -17,14 +17,7 @@ def plot_year(G, pos, title='Enron Corpus Network', save=False):
     node_sizes = [5*sum([d['weight'] for u, v, d in G.edges(data=True) if u == node or v == node]) for node in G.nodes()]
     node_colors = []
     for node in G.nodes():
-        # if node == 'KENNETH LAY':
-        #     node_colors.append('red')
-        # elif node == 'JEFFERY SKILLING':
-        #     node_colors.append('blue')
-        # elif node == 'ANDREW FASTOW':
-        #     node_colors.append('green')
-        # else:
-            node_colors.append('wheat')
+        node_colors.append('wheat')
     nx.draw_networkx_nodes(G, pos, node_size=node_sizes, node_color=node_colors, alpha=0.8)
     nx.draw_networkx_edges(G, pos, edge_color="darkslateblue", 
                            connectionstyle='arc3,rad=0.25', 
@@ -48,14 +41,7 @@ def plot_months(G_months, pos, title='Monthly Networks', save=False):
         node_sizes_month = [5*sum([d['weight'] for u, v, d in G_month.edges(data=True) if u == node or v == node]) for node in G_month.nodes()]
         node_colors = []
         for node in G_month.nodes():
-            # if node == 'KENNETH LAY':
-            #     node_colors.append('red')
-            # elif node == 'JEFFERY SKILLING':
-            #     node_colors.append('blue')
-            # elif node == 'ANDREW FASTOW':
-            #     node_colors.append('green')
-            # else:
-                node_colors.append('wheat')
+            node_colors.append('wheat')
         plt.subplot(4,3,month)
         nx.draw_networkx_nodes(G_month, pos, node_size=node_sizes_month, node_color=node_colors, alpha=0.8)
         nx.draw_networkx_edges(G_month, pos, edgelist=[(u, v) for u, v, _ in edges_to_draw], 

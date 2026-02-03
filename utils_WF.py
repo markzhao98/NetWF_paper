@@ -34,7 +34,7 @@ plt.rcParams['ytick.labelsize'] = 16
 from typing import Literal, Optional, Tuple, Union
 
 
-ProfileSimilarityMode = Literal["mean", "max", "source", "target"]
+ProfileSimilarityMode = Literal["mean", "max", "max_abs", "source", "target"]
 
 def calculate_profile_similarity(
     A: np.ndarray,
@@ -55,7 +55,8 @@ def calculate_profile_similarity(
 
     The final similarity value is chosen by `mode`:
       - "mean": average of the source and target correlations (ignoring NaNs)
-      - "max": max of the source and target correlations (ignoring NaNs)
+      - "max": source/target correlation with the larger value (ignoring NaNs)
+      - "max_abs": source/target correlation with the larger absolute value (ignoring NaNs)
       - "source": source-profile correlation only
       - "target": target-profile correlation only
 
@@ -65,7 +66,7 @@ def calculate_profile_similarity(
         (n×n) data/adjacency matrix. NaNs are treated as missing observations.
     threshold : float
         Values below this threshold are set to 0 in the returned similarity matrix.
-    mode : {"mean", "max", "source", "target"}
+    mode : {"mean", "max", "max_abs", "source", "target"}
         How to combine/choose source/target profile correlations.
 
     Returns
@@ -76,13 +77,8 @@ def calculate_profile_similarity(
     if A.ndim != 2 or A.shape[0] != A.shape[1]:
         raise ValueError(f"A must be square (n×n). Got shape {A.shape}.")
 
-    # Backward-compatible aliases (kept internal; public docs use source/target)
-    if mode == "source":  # ok
-        pass
-    elif mode == "target":  # ok
-        pass
-    elif mode not in ("mean", "max"):
-        raise ValueError("Invalid mode. Choose 'mean', 'max', 'source', or 'target'.")
+    if mode not in ("source", "target", "mean", "max", "max_abs"):
+        raise ValueError("Invalid mode. Choose 'mean', 'max', 'max_abs', 'source', or 'target'.")
 
     n = A.shape[0]
     sim = np.eye(n, dtype=float)
@@ -127,12 +123,21 @@ def calculate_profile_similarity(
                 corr = np.nanmean([source_corr, target_corr])
             elif mode == "max":
                 corr = np.nanmax([source_corr, target_corr])
+            elif mode == "max_abs":
+                if np.isnan(source_corr) and np.isnan(target_corr):
+                    corr = np.nan
+                elif np.isnan(target_corr):
+                    corr = source_corr
+                elif np.isnan(source_corr):
+                    corr = target_corr
+                else:
+                    corr = source_corr if abs(source_corr) >= abs(target_corr) else target_corr
             elif mode == "source":
                 corr = source_corr
             elif mode == "target":
                 corr = target_corr
             else:  # defensive (should be unreachable)
-                raise ValueError("Invalid mode. Choose 'mean', 'max', 'source', or 'target'.")
+                raise ValueError("Invalid mode. Choose 'mean', 'max', 'max_abs', 'source', or 'target'.")
 
             sim[i, j] = corr
             sim[j, i] = corr
@@ -487,3 +492,4 @@ def wiener_filter_iterative(
             U_hat = U_hat * (A_filled_mean / U_hat_mean)
 
     return (U_hat, info) if return_info else U_hat
+

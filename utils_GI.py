@@ -5,20 +5,21 @@ from utils_WF import *
 
 # ----- Plotting -----
 
-def plot_gi(E, title='Genetic interaction score', save=False):
+def plot_gi(E, title='Genetic interaction score', v = 1, save=False):
     """
     Plots a GI network.
     
     Parameters:
     - E (numpy.ndarray): GI network.
     - title (str): Title of the plot.
+    - v (float): Color scale limit.
     - save (bool): Whether to save the plot as a PDF.
     """
     fig, ax = plt.subplots(figsize=(4, 4))
-    im = ax.imshow(E, aspect='equal', cmap='seismic', vmin=-1, vmax=1)
+    im = ax.imshow(E, aspect='equal', cmap='seismic', vmin=-v, vmax=v)
     ax.set_title(title)
-    ax.set_ylabel('Query')
-    ax.set_xlabel('Array')
+    ax.set_ylabel('Genes')
+    ax.set_xlabel('Genes')
     ax.set_xticks([])
     ax.set_yticks([])
     divider = make_axes_locatable(ax)
@@ -40,8 +41,8 @@ def plot_sim(E_sim, title='Profile Similarity', save=False):
     fig, ax = plt.subplots(figsize=(4, 4))
     im = ax.imshow(E_sim, aspect='equal', cmap='Purples', vmin=0, vmax=1)
     ax.set_title(title)
-    ax.set_ylabel('Query')
-    ax.set_xlabel('Array')
+    ax.set_ylabel('Genes')
+    ax.set_xlabel('Genes')
     ax.set_xticks([])
     ax.set_yticks([])
     divider = make_axes_locatable(ax)
@@ -50,6 +51,9 @@ def plot_sim(E_sim, title='Profile Similarity', save=False):
     if save:
         plt.savefig(f'Figures/{title}.pdf', bbox_inches='tight', transparent=True, dpi=1200)
     plt.show()
+
+
+# ----- Validations -----
 
 def get_precision_recall_auprc(E, gold, direction='neg'):
     """
@@ -188,3 +192,4 @@ def calculate_fold_enrichment(gold, E_thresh, direction='neg'):
     fold_enrichment = density_in_sig / density_overall
 
     return fold_enrichment
+
