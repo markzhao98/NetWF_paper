@@ -73,6 +73,14 @@ def calculate_profile_similarity(
     -------
     sim : np.ndarray
         (n×n) symmetric node similarity matrix with ones on the diagonal.
+
+    Notes
+    -----
+    When A contains no NaNs, all pairwise correlations are computed at once via
+    np.corrcoef (a vectorized path that is orders of magnitude faster than the
+    pairwise loop and numerically identical to it). The per-pair loop below is
+    only used as a fallback when A has missing entries, since each pair then
+    needs its own mask of jointly observed indices.
     """
     if A.ndim != 2 or A.shape[0] != A.shape[1]:
         raise ValueError(f"A must be square (n×n). Got shape {A.shape}.")
@@ -81,6 +89,39 @@ def calculate_profile_similarity(
         raise ValueError("Invalid mode. Choose 'mean', 'max', 'max_abs', 'source', or 'target'.")
 
     n = A.shape[0]
+
+    if not np.isnan(A).any():
+        # Constant rows/columns have zero variance; corrcoef yields NaN there,
+        # matching the pairwise convention below (handled by nan_to_num at the end).
+        with np.errstate(invalid="ignore", divide="ignore"):
+            source_corrs = np.corrcoef(A)    # source profiles: rows
+            target_corrs = np.corrcoef(A.T)  # target profiles: columns
+
+        if mode == "source":
+            sim = source_corrs
+        elif mode == "target":
+            sim = target_corrs
+        elif mode == "mean":
+            with np.errstate(invalid="ignore"):
+                sim = np.nanmean(np.stack([source_corrs, target_corrs]), axis=0)
+        elif mode == "max":
+            with np.errstate(invalid="ignore"):
+                sim = np.nanmax(np.stack([source_corrs, target_corrs]), axis=0)
+        else:  # max_abs
+            sim = np.where(
+                np.isnan(target_corrs), source_corrs,
+                np.where(
+                    np.isnan(source_corrs), target_corrs,
+                    np.where(np.abs(source_corrs) >= np.abs(target_corrs), source_corrs, target_corrs),
+                ),
+            )
+
+        sim = np.array(sim, dtype=float)
+        np.fill_diagonal(sim, 1.0)   # match the pairwise convention (diagonal from np.eye)
+        sim = 0.5 * (sim + sim.T)    # enforce exact symmetry
+        sim[sim < threshold] = 0.0
+        return np.nan_to_num(sim, nan=0.0)
+
     sim = np.eye(n, dtype=float)
 
     for i in range(n):
